@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{The four families of \emph{no-reference} CycleQA features. Every quantity is computed from the predicted masks alone; none requires a reference mask, and none has access to the vendor, centre or pathology label. Anatomical and physiological constraints hold on any scanner \emph{by construction}, which is why the resulting detector transfers across vendors.}
+\label{tab:features}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{2.5cm}p{3.9cm}p{4.6cm}c@{}}
+\toprule
+Family & Descriptors & Why it is vendor-invariant & $n$ \\
+\midrule
+Bidirectional agreement & $\overline{A}$, $\min A$, $A_{\mathrm{mid}}$, $\mathrm{sd}\,A$, $A_{10}$, decay, \% frames $A<0.7$ & Per frame $t$ and structure $c$, $A_c(t)=\mathrm{Dice}\!\left(M^{\mathrm{ED}}_t,M^{\mathrm{ES}}_t\right)$: the two independent propagations must converge if the model tracks the true anatomy. & 24 \\[2pt]
+Anatomical plausibility & connected components; LV--myocardium containment; myocardial ring closure; LV holes; image-border contact & The myocardium must form a closed ring enclosing the LV cavity. Fragments, holes and border contact are anatomically impossible regardless of scanner. & 6 \\[2pt]
+Temporal coherence & inter-frame IoU; LV centroid displacement; volume-curve roughness; cycle closure $|V(0)-V(T{-}1)|$; number of extrema of $V(t)$ & $V(t)$ must be smooth, periodic and close its cycle. Abrupt jumps or multiple minima indicate propagation drift. & 8 \\[2pt]
+Physiological plausibility & $\mathrm{EDV}>\mathrm{ESV}$; EF within $[10,80]\%$; volume coefficient of variation; annotated ES frame is the volume minimum & Constraints on cardiac function that hold for every patient on every scanner. & 8 \\[2pt]
+\midrule
+\multicolumn{3}{@{}l}{Total} & 46 \\
+\bottomrule
+\end{tabular}
+\end{table}

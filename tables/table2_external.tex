@@ -1,0 +1,26 @@
+\begin{table}[t]
+\centering
+\caption{External validation of dual-anchored MedSAM2. ACDC is acquired on Siemens scanners only. Dice degrades modestly off-vendor, but the quantity clinicians actually use---ejection fraction---degrades by a factor of six, and the proportion of studies with a failed structure rises from 11\% to 70\%. Prompts are derived from the reference masks, so these are an \emph{oracle-prompt upper bound}.}
+\label{tab:external}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & & \multicolumn{3}{c}{Dice} & EF error & Failure \\
+\cmidrule(lr){3-5}
+Cohort & $n$ & RV & Myo & LV & (pp) & (\%) \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Development (internal)}}\\
+\quad ACDC (Siemens) & 100 & 0.913 & 0.801 & 0.858 & 6.4 & 11 \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{M\&Ms (external)}}\\
+\quad Siemens & 95 & 0.885 & 0.749 & 0.816 & 5.7 & 28 \\
+\quad Philips$^{\dagger}$ & 125 & 0.743 & 0.674 & 0.697 & 29.0 & 66 \\
+\quad GE$^{\dagger}$ & 50 & 0.768 & 0.729 & 0.742 & 32.5 & 58 \\
+\quad Canon$^{\dagger}$ & 50 & 0.751 & 0.653 & 0.750 & 33.9 & 70 \\
+\cmidrule(lr){1-7}
+\quad All M\&Ms & 320 & 0.790 & 0.702 & 0.748 & 23.4 & 54 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\footnotesize $^{\dagger}$Vendor absent from the development set.}
+\end{table}

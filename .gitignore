@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+results/log_*.txt
+results/image_stats.npz
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz

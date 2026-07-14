@@ -1,0 +1,39 @@
+# CycleQA — single source of truth for every analysis choice.
+# Changing a value here means re-running metis/jobs/run_all.sh.
+
+seed: 0
+
+datasets:
+  development: ACDC        # 100 patients, single centre, Siemens only
+  external:    MnM         # 320 patients, 4 vendors, 5 centres, 9 pathologies
+
+labels:                    # verified geometrically in src/verify_data.py, not assumed
+  1: RV
+  2: Myo
+  3: LV
+
+endpoint:
+  # Pre-specified, then swept. NEVER selected to maximise AUROC.
+  primary:      "any structure Dice < 0.70 at an annotated phase"
+  dice_thresh:  0.70
+  secondary:    "|EF error| > 10 percentage points"
+  ef_thresh_pp: 10.0
+  sensitivity:
+    dice: [0.65, 0.70, 0.75, 0.80]
+    ef_pp: [5.0, 10.0, 15.0]
+
+features:
+  # Ground truth may NEVER enter this matrix. Enforced by assertion.
+  families: [anchor, anat, temp, func]
+  forbidden_substrings: [gt_, true_, dice_, hd95, assd, vendor, centre, pathology, ef_abs_err]
+  n_total: 46
+
+protocol:
+  development:  "patient-level nested 5-fold CV (outer 5, inner 4); out-of-fold predictions only"
+  external:     "model FROZEN after ACDC, applied exactly once to M&Ms; never refit"
+  bootstrap:    2000        # patient-level resamples
+  models:       [rule-based, logistic-regression, random-forest]
+
+interventions:
+  risk_coverage: [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+  reselection_variants: [bidir, ed_pred, es_pred]
