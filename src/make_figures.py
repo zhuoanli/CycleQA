@@ -72,9 +72,9 @@ def fig1_vendor():
     dev, ext = cohorts()
     groups = [dev, ext[ext.vendor == "Siemens"]] + [ext[ext.vendor == v]
                                                     for v in ["Philips", "GE", "Canon"]]
-    # ACDC is itself a Siemens cohort, so it carries the Siemens colour. The two group
-    # brackets below the axis say which dataset each bar comes from.
-    labels = ["Siemens", "Siemens", "Philips", "GE", "Canon"]
+    # ACDC is itself a Siemens cohort, so the first two bars share the Siemens colour and the
+    # dataset is carried in the tick label.
+    labels = ["Siemens-ACDC", "Siemens-M&Ms", "Philips", "GE", "Canon"]
     cols = [COL["Siemens"], COL["Siemens"], COL["Philips"], COL["GE"], COL["Canon"]]
     hats = ["", "", HATCH["Philips"], HATCH["GE"], HATCH["Canon"]]
     x = np.arange(5)
@@ -92,12 +92,6 @@ def fig1_vendor():
         ax.set_xticklabels(labels, fontsize=7.4, rotation=28, ha="right")
         ax.set_ylim(0, ymax); ax.set_ylabel(ylabel, fontsize=8.5)
         ax.set_title(title, fontsize=9.5, pad=8)
-        # dataset brackets under the axis
-        for x0, x1, lab in [(-0.42, 0.42, "ACDC"), (0.58, 4.42, "M&Ms")]:
-            ax.plot([x0, x1], [-0.235 * ymax] * 2, color=MUTED, lw=0.9,
-                    clip_on=False, zorder=3)
-            ax.text((x0 + x1) / 2, -0.29 * ymax, lab, ha="center", va="top",
-                    fontsize=8, color=INK, clip_on=False)
 
     panel(axes[0], [g[["dice_RV", "dice_Myo", "dice_LV"]].mean().mean() for g in groups],
           "{:.3f}", 1.05, 0.03, "Mean Dice", "(a) Segmentation accuracy")
