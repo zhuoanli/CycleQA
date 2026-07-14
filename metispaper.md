@@ -417,21 +417,37 @@ before a single statistic is quoted.
 Two patients, five columns. Both rows show a **mid-cycle frame**, deliberately: that is where
 *neither* propagation is anchored, so neither has the advantage of a prompt.
 
+**Left of the divider — the annotated phase (ED), where a reference mask exists:**
+
 | Column | What it shows |
 |---|---|
-| 1 | the cine image |
-| 2 | **forward pass** — MedSAM2 prompted at ED, propagated forward to this frame |
-| 3 | **backward pass** — MedSAM2 prompted at ES, propagated backward to this frame |
-| 4 | **the disagreement** — the voxels where the two passes assign different labels. **This is the only thing CycleQA is allowed to see.** |
-| 5 | agreement `A(t)` across the whole cardiac cycle, with CycleQA's risk, the true Dice, and the EF error |
+| 1 | **Reference** — the ground-truth mask |
+| 2 | **Prediction** — what the model produced. The reader sees the *true* error here. |
 
-**Top row (Siemens, PASS):** the two contours are nearly identical. The disagreement map is a thin
-rim — boundary noise. `A(t)` sits near 0.9. **CycleQA risk 0.00. True Dice 0.888. EF error 1.3 pp.**
+**Right of the divider — mid-cycle, where no annotation exists at all:**
+
+| Column | What it shows |
+|---|---|
+| 3 | **forward pass** — MedSAM2 prompted at ED, propagated forward to this frame |
+| 4 | **backward pass** — MedSAM2 prompted at ES, propagated backward to this frame |
+| 4 | **the disagreement** — computed as `ed_pred[t] != es_pred[t]`: the voxels where the two passes assign *different labels*. **This is the only thing CycleQA is allowed to see.** |
+| 5 | **the disagreement map** |
+| 6 | agreement `A(t)` across the cardiac cycle, and CycleQA's risk |
+
+> **How the disagreement is computed — no ground truth anywhere in it:**
+> for frame *t* and structure *c*, `A_c(t) = Dice( ed_pred[t] , es_pred[t] )` — the overlap between
+> the two independent propagations. The map in column 5 is simply `ed_pred[t] != es_pred[t]`.
+
+**Top row (Siemens, PASS):** all three structures are segmented well (RV 0.922, Myo 0.834, LV
+0.921). Reference and prediction are nearly identical, and so are the two propagations. The
+disagreement map is a thin rim — boundary noise. **CycleQA risk 0.06. True Dice 0.892. EF error
+0.2 pp.** (A risk of exactly 0.00 would look artificial; 0.06 is a real, low, non-degenerate score.)
 
 **Bottom row (Canon, REVIEW):** the forward pass draws a large left ventricle; the backward pass
-draws a small one and shifts the myocardium. **The disagreement map is a large solid region — the
-model is visibly contradicting itself.** `A(t)` collapses to 0.3–0.4. **CycleQA risk 0.95. True Dice
-0.553. EF error 42.0 pp.**
+draws a small one, shifts the myocardium, and **splits the right ventricle into two components —
+anatomically impossible.** The disagreement map is a large solid region: **the model is visibly
+contradicting itself.** `A(t)` collapses to 0.3–0.4. **CycleQA risk 0.95. True Dice 0.553. EF error
+42.0 pp.**
 
 > **Neither judgement used a reference mask. The red region *is* the signal.** This is the figure
 > that makes the method intuitive before any number is quoted.

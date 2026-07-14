@@ -1,0 +1,11 @@
+name: cycleqa
+channels: [conda-forge]
+dependencies:
+  - python>=3.9
+  - numpy>=1.23
+  - scipy>=1.9
+  - pandas>=1.5
+  - scikit-learn>=1.2
+  - matplotlib>=3.6
+  - nibabel>=4.0
+  # Stage 2 (regenerating predictions) additionally needs torch and the MedSAM2 checkpoint.
