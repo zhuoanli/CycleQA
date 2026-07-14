@@ -1,14 +1,14 @@
 # Datasets
 
 Both cohorts are public. Neither is redistributed here; the scripts read the preprocessed
-NPZ caches produced by the companion repository's preprocessing pipeline.
+NPZ caches produced by `pipeline/prep_acdc_4d.py` and `pipeline/prep_mnm.py` (see `docs/PIPELINE.md`).
 
 ## ACDC — development (internal)
 
 | | |
 |---|---|
 | Source | Automated Cardiac Diagnosis Challenge, Bernard et al. 2018, `10.1109/TMI.2018.2837502` |
-| Patients | **100** (all used; the companion paper used a 20-patient validation subset) |
+| Patients | **100** (all used) |
 | Centre | 1 (University Hospital of Dijon) |
 | **Vendor** | **Siemens only** — this single fact is what the paper turns on |
 | Pathology | 5 groups × 20: NOR, DCM, HCM, MINF, RV |

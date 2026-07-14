@@ -4,7 +4,7 @@ Nothing is trained here. Every prediction already existed on disk; this work rea
 
 ## The system under audit (fixed)
 
-**Dual-anchored MedSAM2** — the companion MIUA main-track paper. MedSAM2 (hiera-tiny) is
+**Dual-anchored MedSAM2.** MedSAM2 (hiera-tiny) is
 prompted with a bounding box at ED and propagated forward, prompted again at ES and propagated
 backward, and the two passes are merged at the temporal midpoint.
 
@@ -40,8 +40,9 @@ Two reasons, and the first is the one that matters scientifically:
 1. **They are frame-wise. They have no propagation, therefore no second direction, therefore
    no disagreement signal.** Their NPZs contain only `bidir` — a single output. This is not a
    limitation of our implementation; it is the structural point of the paper. A frame-wise CNN
-   *cannot* produce this signal, which is why prior CMR quality-control work
-   (Robinson 2019, Tarroni 2019, Wang 2020) could not have found it.
+   *cannot* produce this signal. This is why prior reference-free CMR quality-control work
+   (Robinson 2019, Tarroni 2019, Wang 2020, Hann 2021), all of which targets frame-wise
+   supervised models, could not have found it.
 
 2. Their checkpoint provenance is unresolved. `infer_unet_mnm.py` was deleted in commit
    `c437e26`, and `results/unet_mnm/` predates both surviving checkpoints

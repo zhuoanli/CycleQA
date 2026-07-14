@@ -26,12 +26,10 @@
 Segmentation via Dual-Anchored Medical Video Foundation Model}
 \titlerunning{Cross-Vendor Quality Assurance of Zero-Shot Cine CMR Segmentation}
 
-\author{Zhuoan Li\inst{1,2}\orcidlink{0009-0005-0647-8579} \and
-        Behzad Sharif\inst{1,2}\orcidlink{0000-0002-8945-8178}}
-\authorrunning{Z. Li and B. Sharif}
+\author{Zhuoan Li\orcidlink{0009-0005-0647-8579}}
+\authorrunning{Z. Li}
 \institute{Weldon School of Biomedical Engineering, Purdue University,
-           West Lafayette, IN, USA \and
-           Indiana University School of Medicine, Indianapolis, IN, USA\\
+           West Lafayette, IN, USA\\
            \email{li4533@purdue.edu}}
 
 \maketitle
@@ -69,7 +67,7 @@ Promptable video foundation models have made zero-shot segmentation of dynamic m
 imaging practical \cite{ravi2024sam2,zhu2024medsam2}. In cine cardiac MRI, a dual-anchored
 propagation scheme---prompting MedSAM2 at end-diastole (ED) and end-systole (ES) and
 merging the two passes---segments the entire cardiac cycle from two bounding boxes, with
-no cardiac-specific training \cite{li2026dualanchor}. The appeal for clinical translation
+no cardiac-specific training. The appeal for clinical translation
 is exactly that it needs no site-specific labels.
 
 That appeal contains a trap. A model that needs no labels to \emph{run} also has no labels
@@ -118,8 +116,9 @@ SAM \cite{kirillov2023sam} and its video successor SAM2 \cite{ravi2024sam2} were
 medical data as MedSAM \cite{ma2024medsam} and MedSAM2 \cite{zhu2024medsam2}. Prompting
 strategies for cardiac MRI have been studied for the static case
 \cite{stein2023samcardiac,chen2025cinecmrsam}, and CineMA \cite{fu2025cinema} pretrains a
-cardiac-specific foundation model. The dual-anchored propagation we audit here is
-introduced in the companion paper \cite{li2026dualanchor}.
+cardiac-specific foundation model. The dual-anchored propagation scheme audited here
+is specified in full in Sect.~\ref{sec:system}; it requires no training and no architectural
+change, only a second prompt.
 
 \subsubsection{Domain shift in cardiac MRI.}
 Multi-vendor generalisation is a long-standing weakness of supervised CMR segmentation
@@ -159,9 +158,9 @@ the method already computes.
 
 \section{Methods}
 
-\subsection{The system under audit (fixed)}
-We treat the dual-anchored MedSAM2 pipeline of \cite{li2026dualanchor} as a fixed upstream
-system and do not modify it. Briefly: each short-axis slice is processed as a 2D$+t$
+\subsection{The system under audit (fixed)}\label{sec:system}
+The system audited in this paper is a dual-anchored MedSAM2 propagation pipeline, treated
+throughout as a fixed upstream component and never modified. Each short-axis slice is processed as a 2D$+t$
 sequence; MedSAM2 (hiera-tiny) is prompted with a bounding box at ED and propagated forward,
 prompted again at ES and propagated backward, and the two passes are merged at the temporal
 midpoint. This yields three full-length predictions per slice---$M^{\mathrm{ED}}$,
@@ -252,14 +251,33 @@ masks has become worthless.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig3_cross_vendor.png}
+\includegraphics[width=\textwidth]{figures/fig1_vendor.png}
 \caption{External validation on M\&Ms ($n=320$). ACDC is a single-vendor (Siemens)
 benchmark. (a) Dice degrades modestly off-vendor. (b) Ejection-fraction error---the quantity
 clinicians use---degrades sixfold. (c) The failure rate rises from 11\% to 70\% on Canon.}
 \label{fig:vendor}
 \end{figure}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2_qualitative.png}
+\caption{The method, seen directly. Both rows show a mid-cycle frame, where \emph{neither}
+propagation is anchored. \textbf{Top (Siemens, passed):} the forward and backward passes agree
+almost everywhere; the disagreement map is a thin boundary rim, and $A(t)$ stays near 0.9.
+\textbf{Bottom (Canon, flagged):} the two passes place the left ventricle and myocardium
+differently, and the disagreement map is a large solid region---the model is contradicting itself.
+$A(t)$ falls to 0.3--0.4. CycleQA assigns risks of 0.00 and 0.95 respectively. \textbf{Neither
+judgement used a reference mask}: the fourth column is the only thing CycleQA is allowed to see.}
+\label{fig:qual}
+\end{figure}
+
 \subsection{The failure is visible without ground truth}
+Fig.~\ref{fig:qual} shows what this means on the images themselves. At a mid-cycle frame, where
+neither propagation is anchored, a passing Siemens study has two passes that agree almost
+everywhere, while a failing Canon study has two passes that place the ventricle and myocardium
+differently---the disagreement map is a large solid region, and the model is visibly contradicting
+itself. No reference mask is involved in producing that map.
+
 Fig.~\ref{fig:est} and Table~\ref{tab:qc}(a) report Tier 1. Used \emph{directly}, with no
 fitting of any kind, bidirectional disagreement estimates Dice with MAE 0.064 ($r=0.735$) on
 ACDC and MAE 0.072 ($r=0.814$) on the external cohort. The signal is \emph{stronger} out of
@@ -268,7 +286,7 @@ are larger and more varied.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig2_dice_estimation.png}
+\includegraphics[width=\textwidth]{figures/fig3_estimation.png}
 \caption{Segmentation quality is estimable without ground truth. The $x$-axis requires a
 reference mask; the $y$-axis does not. No model is fitted.}
 \label{fig:est}
@@ -374,9 +392,9 @@ phases. Evaluation is retrospective and on public data; there is no prospective 
 validation. The review threshold is an operating choice each site must set against its own
 risk tolerance. Finally, the development set (100 patients, 11 failures) is small---which is
 precisely why the training-free tier, not the learned one, is our recommended configuration.
-We also computed predictions for supervised U-Net and DINOv2 baselines on M\&Ms, but the
-provenance of their checkpoints could not be established with certainty, so we exclude them
-rather than report a comparison we cannot defend.
+Supervised U-Net and DINOv2 baselines were also run on M\&Ms, but the provenance of their
+training checkpoints could not be established with certainty, so they are excluded rather than
+reported as a comparison that cannot be defended.
 
 
 \section{Conclusion}
@@ -392,12 +410,6 @@ ejection-fraction error. The redundancy introduced to make the model accurate is
 redundancy that makes it self-auditing. A fragile model can be deployed safely if the
 watchdog watching it is not fragile.
 
-\subsubsection{Relation to prior work.} This paper is a translational extension of our
-companion MIUA main-track paper \cite{li2026dualanchor}, which introduces dual-anchored
-propagation and evaluates its segmentation accuracy on ACDC. The present work treats that
-system as fixed and addresses a distinct question---no-reference failure detection under
-distribution shift---on 320 previously unreported patients. No result, figure or table of
-\cite{li2026dualanchor} is reproduced here.
 
 \subsubsection{Acknowledgements.} Removed for review.
 

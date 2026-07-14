@@ -10,7 +10,7 @@ CycleQA scores each of the three variants with the same no-reference plausibilit
 no extra inference -- all three predictions already exist.
 
 Reported against three references:
-  always-bidir     what the system does today (Paper 133's merged output)
+  always-bidir     what the system reports today (the merged output)
   always-ES        the best fixed choice in hindsight -- which you could not have known
   oracle           the per-patient best, an upper bound
 

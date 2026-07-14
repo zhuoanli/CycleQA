@@ -1,12 +1,15 @@
-"""Phase 3 -- the four figures.
+"""The five figures. Every number is read from results/*.csv; nothing is typed by hand.
 
-Every number is read from metis/results/*.csv. Nothing is typed by hand.
+Design notes. LNCS proceedings are frequently read in greyscale, so identity is carried by
+marker shape and hatch in addition to hue -- colour never encodes identity alone. The
+four-manufacturer palette was validated for lightness band, chroma floor, adjacent-pair
+colour-vision-deficiency separation (>= 12 dE across deuteran/protan/tritan) and >= 3:1
+contrast against the white surface.
 
-Design: LNCS proceedings are often read in greyscale, so vendor identity is carried by
-marker shape and hatch as well as hue -- colour never encodes identity alone. The
-four-vendor palette passed all six checks of the colour formula (lightness band, chroma
-floor, adjacent-pair CVD separation >= 12 dE across deuteran/protan/tritan, and >= 3:1
-contrast on the white surface).
+The three-way cohort split in Fig. 1 is deliberate. The development cohort is acquired on
+Siemens scanners, so a bare development-vs-external comparison would confound a change of
+dataset with a change of manufacturer. Splitting the external cohort into same-manufacturer
+and unseen-manufacturer separates them.
 """
 import os
 import sys
@@ -16,284 +19,371 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
+from matplotlib.colors import ListedColormap
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import roc_curve
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import ROOT
+from common import CLS, ROOT, patient_slices
 
 RES = os.path.join(ROOT, "metis", "results")
 FIG = os.path.join(ROOT, "metis", "figures")
 os.makedirs(FIG, exist_ok=True)
 
-# validated categorical palette, fixed order -- never cycled
 VENDORS = ["Siemens", "Philips", "GE", "Canon"]
 COL = {"Siemens": "#0173B2", "Philips": "#B86B00", "GE": "#029E73", "Canon": "#CC78BC"}
-MRK = {"Siemens": "o", "Philips": "s", "GE": "^", "Canon": "D"}   # greyscale fallback
+MRK = {"Siemens": "o", "Philips": "s", "GE": "^", "Canon": "D"}
 HATCH = {"Siemens": "", "Philips": "///", "GE": "...", "Canon": "xxx"}
+DEV = "#4D4D4D"
 INK, MUTED, GRID = "#1A1A1A", "#5C5C5C", "#D8D8D8"
+
+# structure colours for the mask overlays (RV / Myo / LV)
+STRUCT = {1: "#E8000B", 2: "#FFC400", 3: "#00A0E0"}
+STRUCT_NAME = {1: "RV", 2: "Myocardium", 3: "LV"}
 
 plt.rcParams.update({
     "font.family": "DejaVu Sans", "font.size": 8,
     "axes.edgecolor": MUTED, "axes.linewidth": 0.8, "axes.labelcolor": INK,
     "xtick.color": MUTED, "ytick.color": MUTED, "text.color": INK,
     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.5,
-    "axes.axisbelow": True, "legend.frameon": False, "figure.dpi": 300,
-    "savefig.dpi": 300, "savefig.bbox": "tight",
+    "axes.axisbelow": True, "legend.frameon": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "savefig.bbox": "tight",
 })
 
 
 def save(fig, name):
-    p = os.path.join(FIG, name)
-    fig.savefig(p, facecolor="white")
+    fig.savefig(os.path.join(FIG, name), facecolor="white")
     plt.close(fig)
-    print(f"  wrote {p}")
+    print(f"  wrote figures/{name}")
 
 
-# ---------------------------------------------------------------- Fig 2
-def fig2_dice_estimation():
-    """Predicted (no ground truth) vs true Dice. The headline panel."""
+def cohorts():
+    m = pd.read_csv(os.path.join(RES, "patient_metrics.csv"))
+    m = m[m.model == "MedSAM2-dual"]
+    return m[m.dataset == "ACDC"], m[m.dataset == "MnM"]
+
+
+# ---------------------------------------------------------------- Figure 1
+def fig1_vendor():
+    dev, ext = cohorts()
+    groups = [dev, ext[ext.vendor == "Siemens"]] + [ext[ext.vendor == v] for v in
+                                                    ["Philips", "GE", "Canon"]]
+    labels = ["ACDC (Siemens)", "M&Ms Siemens", "M&Ms Philips", "M&Ms GE", "M&Ms Canon"]
+    cols = [DEV, COL["Siemens"], COL["Philips"], COL["GE"], COL["Canon"]]
+    hats = ["", "", HATCH["Philips"], HATCH["GE"], HATCH["Canon"]]
+    x = np.arange(5)
+
+    fig, axes = plt.subplots(1, 3, figsize=(9.4, 3.2), gridspec_kw={"wspace": 0.34})
+
+    def panel(ax, vals, fmt, ymax, pad, ylabel, title):
+        b = ax.bar(x, vals, 0.66, color=cols, hatch=hats, edgecolor="white",
+                   linewidth=0.6, zorder=2)
+        b[0].set_edgecolor(INK); b[0].set_linewidth(1.0)
+        for xi, vi in zip(x, vals):
+            ax.text(xi, vi + pad, fmt.format(vi), ha="center", fontsize=7.2, color=INK)
+        ax.axvspan(1.5, 4.5, color="#F2F2F2", zorder=0)
+        ax.text(3.0, ymax * 0.97, "manufacturers not seen in development", fontsize=6.2,
+                color=MUTED, ha="center", va="top", style="italic")
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, fontsize=7, rotation=32, ha="right")
+        ax.set_ylim(0, ymax); ax.set_ylabel(ylabel); ax.set_title(title, fontsize=9, pad=7)
+
+    panel(axes[0], [g[["dice_RV", "dice_Myo", "dice_LV"]].mean().mean() for g in groups],
+          "{:.3f}", 1.08, 0.035, "Mean Dice (RV, Myo, LV)", "(a) Segmentation accuracy")
+    panel(axes[1], [g.ef_abs_err.mean() for g in groups],
+          "{:.1f}", 43, 1.1, "Absolute EF error (percentage points)",
+          "(b) Ejection-fraction error")
+    panel(axes[2], [100 * (g.dice_min < 0.70).mean() for g in groups],
+          "{:.0f}", 90, 2.2, "Studies with any Dice < 0.70  (%)", "(c) Failure rate")
+
+    fig.suptitle("Benchmark accuracy does not transfer across scanner manufacturers: "
+                 "a new hospital on the same scanner costs nothing, a new scanner costs everything",
+                 fontsize=9.5, y=1.02)
+    save(fig, "fig1_vendor.png")
+
+
+# ---------------------------------------------------------------- Figure 2
+def fig2_qualitative():
+    """The method, seen directly on the images.
+
+    Two cases at a mid-cycle frame, where neither propagation is anchored. The forward and
+    backward passes are shown side by side, together with the voxels on which they disagree --
+    which is the only thing CycleQA is allowed to look at.
+    """
+    scores = pd.read_csv(os.path.join(RES, "qc_scores.csv")).set_index("patient_id")
+    curves = np.load(os.path.join(RES, "disagreement_curves.npz"))
+
+    cases = [("I5L3S2", "Siemens", "PASS"), ("B3E2W8", "Canon", "REVIEW")]
+    slices_mnm = patient_slices("MnM")
+
+    fig, axes = plt.subplots(2, 5, figsize=(10.4, 4.4),
+                             gridspec_kw={"width_ratios": [1, 1, 1, 1, 1.85],
+                                          "wspace": 0.10, "hspace": 0.10})
+    for r in range(2):                       # give the A(t) panel room for its y-label
+        b = axes[r, 4].get_position()
+        axes[r, 4].set_position([b.x0 + 0.045, b.y0, b.width - 0.045, b.height])
+
+    for r, (pid, vendor, verdict) in enumerate(cases):
+        files = slices_mnm[pid]
+        z = len(files) // 2                                   # mid-ventricular slice
+        d = np.load(files[z], allow_pickle=True)
+        p = np.load(os.path.join(ROOT, "results/medsam2_mnm",
+                                 os.path.basename(files[z])), allow_pickle=True)
+        ed, es = p["ed_pred"], p["es_pred"]
+        ei, si = int(p["ed_idx"]), int(p["es_idx"])
+        T = min(ed.shape[0], es.shape[0])
+        lo, hi = sorted((ei, si))
+        t = int((lo + hi) / 2) if hi > lo + 1 else min(T - 1, lo + 1)   # mid-cycle frame
+
+        img = d["frames"][t, 0].astype(np.float32)
+        nz = ((ed[t] > 0) | (es[t] > 0))
+        ys, xs = np.where(nz)
+        if ys.size:
+            cy, cx = int(ys.mean()), int(xs.mean())
+        else:
+            cy = cx = 256
+        h = 90
+        sl = (slice(max(0, cy - h), cy + h), slice(max(0, cx - h), cx + h))
+
+        def overlay(ax, mask, title=None):
+            ax.imshow(img[sl], cmap="gray", interpolation="nearest")
+            for c, col in STRUCT.items():
+                m = (mask[sl] == c)
+                if m.sum():
+                    ax.contour(m, levels=[0.5], colors=[col], linewidths=1.1)
+            ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+            for s in ax.spines.values():
+                s.set_edgecolor(MUTED); s.set_linewidth(0.6)
+            if title:
+                ax.set_title(title, fontsize=8, pad=4)
+
+        overlay(axes[r, 0], np.zeros_like(ed[t]),
+                "Image (mid-cycle)" if r == 0 else None)
+        overlay(axes[r, 1], ed[t], "Forward pass\n(anchored at ED)" if r == 0 else None)
+        overlay(axes[r, 2], es[t], "Backward pass\n(anchored at ES)" if r == 0 else None)
+
+        # disagreement: voxels where the two passes assign different labels
+        ax = axes[r, 3]
+        ax.imshow(img[sl], cmap="gray", interpolation="nearest")
+        dis = (ed[t] != es[t])[sl]
+        ax.imshow(np.ma.masked_where(~dis, dis), cmap=ListedColormap(["#E8000B"]),
+                  alpha=0.55, interpolation="nearest")
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        for s in ax.spines.values():
+            s.set_edgecolor(MUTED); s.set_linewidth(0.6)
+        if r == 0:
+            ax.set_title("Disagreement\n(all CycleQA sees)", fontsize=8, pad=4)
+
+        # A(t) across the cycle
+        ax = axes[r, 4]
+        A = curves[f"MnM/{pid}"]                       # (3, T)
+        tt = np.arange(A.shape[1])
+        for ci, name in enumerate(CLS.values()):
+            ax.plot(tt, A[ci], lw=1.3, color=list(STRUCT.values())[ci], label=name)
+        ax.axvline(t, color=MUTED, lw=0.9, ls=":")
+        ax.set_ylim(0, 1.28); ax.set_xlim(0, A.shape[1] - 1)
+        ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_ylabel("Agreement $A(t)$", fontsize=7.5)
+        ax.tick_params(labelsize=7)
+        s = scores.loc[pid]
+        ax.text(0.97, 0.04,
+                f"CycleQA risk = {s.qc_LogReg:.2f}\ntrue Dice = {s.dice_mean:.3f}\n"
+                f"EF error = {s.ef_abs_err:.1f} pp",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=7,
+                color=INK, linespacing=1.5)
+        if r == 0:
+            ax.set_title("Agreement over the cardiac cycle", fontsize=8, pad=4)
+            ax.legend(fontsize=6.8, loc="upper left", ncol=3, handlelength=1.1,
+                      columnspacing=0.9, handletextpad=0.3, borderpad=0.2)
+            ax.set_xticklabels([])
+        else:
+            ax.set_xlabel("Cardiac phase (frame)", fontsize=7.5)
+
+        # row label
+        colr = "#1A7F37" if verdict == "PASS" else "#C42B1C"
+        axes[r, 0].text(-0.12, 0.5, f"{vendor}\n{verdict}", transform=axes[r, 0].transAxes,
+                        rotation=90, ha="center", va="center", fontsize=8.5,
+                        color=colr, weight="bold")
+
+    fig.suptitle("The two propagations diverge exactly where the segmentation fails; "
+                 "no reference mask is needed to see it", fontsize=9.5, y=0.99)
+    save(fig, "fig2_qualitative.png")
+
+
+# ---------------------------------------------------------------- Figure 3
+def fig3_estimation():
     feat = pd.read_csv(os.path.join(RES, "patient_features.csv"))
     met = pd.read_csv(os.path.join(RES, "patient_metrics.csv"))
     met = met[met.model == "MedSAM2-dual"]
     d = feat.merge(met, on=["patient_id", "dataset"], validate="1:1")
     est = pd.read_csv(os.path.join(RES, "dice_estimation.csv"))
 
-    fig, axes = plt.subplots(1, 2, figsize=(6.6, 3.1))
-    for ax, ds, title in [(axes[0], "ACDC", "ACDC (development, Siemens only)"),
-                          (axes[1], "MnM", "M&Ms (external, 4 vendors)")]:
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.6), gridspec_kw={"wspace": 0.26})
+    for ax, ds, title in [(axes[0], "ACDC", "(a) Development: ACDC ($n$ = 100)"),
+                          (axes[1], "MnM", "(b) External: M&Ms ($n$ = 320)")]:
         g = d[d.dataset == ds]
-        ax.plot([0.3, 1.0], [0.3, 1.0], color=MUTED, lw=0.8, ls="--", zorder=1)
+        ax.plot([0.3, 1.0], [0.3, 1.0], color=MUTED, lw=0.9, ls="--", zorder=1)
         if ds == "ACDC":
-            ax.scatter(g.dice_mean, g.anchor_agree_mean_ALL, s=16, marker="o",
-                       facecolor=COL["Siemens"], edgecolor="white", linewidth=0.4,
-                       alpha=0.85, zorder=2)
+            ax.scatter(g.dice_mean, g.anchor_agree_mean_ALL, s=20, marker="o",
+                       facecolor=DEV, edgecolor="white", linewidth=0.4, alpha=0.85, zorder=2)
         else:
             for v in VENDORS:
                 s = g[g.vendor == v]
-                ax.scatter(s.dice_mean, s.anchor_agree_mean_ALL, s=18, marker=MRK[v],
+                ax.scatter(s.dice_mean, s.anchor_agree_mean_ALL, s=22, marker=MRK[v],
                            facecolor=COL[v], edgecolor="white", linewidth=0.4,
                            alpha=0.85, label=v, zorder=2)
-            ax.legend(loc="upper left", fontsize=6.5, handletextpad=0.2,
-                      borderpad=0.2, labelspacing=0.25)
+            ax.legend(loc="upper left", fontsize=7, handletextpad=0.2, borderpad=0.2,
+                      labelspacing=0.3, title="Manufacturer", title_fontsize=7)
         r = est[(est.scope == ds) & (est.subgroup == "ALL")].iloc[0]
-        ax.text(0.97, 0.06, f"$r$ = {r.pearson_r:.3f}\nMAE = {r.mae:.3f}\n$n$ = {int(r.n)}",
-                transform=ax.transAxes, ha="right", va="bottom", fontsize=7,
-                color=INK, linespacing=1.5)
-        ax.set_xlabel("True Dice  (requires ground truth)")
-        ax.set_title(title, fontsize=8, pad=6)
-        ax.set_xlim(0.3, 1.0); ax.set_ylim(0.3, 1.0)
-        ax.set_aspect("equal")
-    axes[0].set_ylabel("CycleQA estimate\n(bidirectional agreement, no ground truth)")
-    fig.suptitle("Segmentation quality is estimable without ground truth",
-                 fontsize=9, y=1.02)
-    save(fig, "fig2_dice_estimation.png")
+        ax.text(0.97, 0.05, f"$r$ = {r.pearson_r:.3f}\nMAE = {r.mae:.3f}",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=8.5,
+                color=INK, linespacing=1.6)
+        ax.set_xlabel("True Dice   (requires a reference mask)")
+        ax.set_title(title, fontsize=9, pad=7)
+        ax.set_xlim(0.3, 1.0); ax.set_ylim(0.3, 1.0); ax.set_aspect("equal")
+    axes[0].set_ylabel("CycleQA estimate\n(agreement of the two propagations;\n"
+                       "no reference mask, no training)")
+    fig.suptitle("Segmentation quality is estimable from the predictions alone",
+                 fontsize=10, y=1.01)
+    save(fig, "fig3_estimation.png")
 
 
-# ---------------------------------------------------------------- Fig 3
-def fig3_cross_vendor():
-    """Benchmark accuracy does not transfer -- and the failure is vendor-aligned."""
-    m = pd.read_csv(os.path.join(RES, "patient_metrics.csv"))
-    m = m[m.model == "MedSAM2-dual"]
-    acdc = m[m.dataset == "ACDC"]
-    ext = m[m.dataset == "MnM"]
-
-    fig, axes = plt.subplots(1, 3, figsize=(7.0, 2.8),
-                             gridspec_kw={"width_ratios": [1.3, 1, 1], "wspace": 0.42})
-
-    # (a) Dice by structure x vendor
-    ax = axes[0]
-    structs = ["RV", "Myo", "LV"]
-    x = np.arange(len(structs))
-    w = 0.17
-    handles = []
-    b = ax.bar(x - 2 * w, [acdc[f"dice_{s}"].mean() for s in structs], w * 0.88,
-               facecolor="white", edgecolor=INK, linewidth=0.8, label="ACDC", zorder=2)
-    handles.append(b)
-    for i, v in enumerate(VENDORS):
-        g = ext[ext.vendor == v]
-        b = ax.bar(x + (i - 1) * w, [g[f"dice_{s}"].mean() for s in structs], w * 0.88,
-                   facecolor=COL[v], edgecolor="white", linewidth=0.5,
-                   hatch=HATCH[v], label=v, zorder=2)
-        handles.append(b)
-    ax.set_xticks(x); ax.set_xticklabels(structs)
-    ax.set_ylabel("Dice"); ax.set_ylim(0, 1.05)
-    ax.set_title("(a) Segmentation accuracy", fontsize=8, pad=5)
-
-    # (b) EF error -- the clinically used quantity
-    ax = axes[1]
-    vals = [acdc.ef_abs_err.mean()] + [ext[ext.vendor == v].ef_abs_err.mean() for v in VENDORS]
-    cols = ["white"] + [COL[v] for v in VENDORS]
-    hats = [""] + [HATCH[v] for v in VENDORS]
-    edge = [INK] + ["white"] * 4
-    bars = ax.bar(range(5), vals, 0.68, color=cols, hatch=hats, zorder=2)
-    for b, e in zip(bars, edge):
-        b.set_edgecolor(e); b.set_linewidth(0.8 if e == INK else 0.5)
-    for i, v in enumerate(vals):
-        ax.text(i, v + 0.9, f"{v:.1f}", ha="center", fontsize=6.5, color=INK)
-    ax.set_xticks(range(5)); ax.set_xticklabels(["ACDC"] + VENDORS, rotation=40, ha="right",
-                                                fontsize=6.5)
-    ax.set_ylabel("EF error (pp)")
-    ax.set_ylim(0, 42)
-    ax.set_title("(b) Clinical biomarker error", fontsize=8, pad=5)
-
-    # (c) failure rate
-    ax = axes[2]
-    fr = [100 * (acdc.dice_min < 0.70).mean()] + \
-         [100 * (ext[ext.vendor == v].dice_min < 0.70).mean() for v in VENDORS]
-    bars = ax.bar(range(5), fr, 0.68, color=cols, hatch=hats, zorder=2)
-    for b, e in zip(bars, edge):
-        b.set_edgecolor(e); b.set_linewidth(0.8 if e == INK else 0.5)
-    for i, v in enumerate(fr):
-        ax.text(i, v + 1.8, f"{v:.0f}", ha="center", fontsize=6.5, color=INK)
-    ax.set_xticks(range(5)); ax.set_xticklabels(["ACDC"] + VENDORS, rotation=40, ha="right",
-                                                fontsize=6.5)
-    ax.set_ylabel("Any Dice < 0.70  (%)")
-    ax.set_ylim(0, 88)
-    ax.set_title("(c) Failure rate", fontsize=8, pad=5)
-
-    fig.legend(handles=handles, labels=["ACDC"] + VENDORS, ncol=5, fontsize=6.8,
-               loc="lower center", bbox_to_anchor=(0.5, -0.13), handlelength=1.3,
-               handletextpad=0.35, columnspacing=1.3)
-    fig.suptitle("Dice degrades modestly off-vendor; the clinical biomarker collapses",
-                 fontsize=9, y=1.03)
-    save(fig, "fig3_cross_vendor.png")
-
-
-# ---------------------------------------------------------------- Fig 4
+# ---------------------------------------------------------------- Figure 4
 def fig4_detection():
-    """Failure detection: ROC, per-vendor external ROC, calibration."""
     s = pd.read_csv(os.path.join(RES, "qc_scores.csv"))
     perf = pd.read_csv(os.path.join(RES, "qc_performance.csv"))
     ood = pd.read_csv(os.path.join(RES, "ood_control.csv"))
 
-    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.7), gridspec_kw={"wspace": 0.55})
+    fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.3), gridspec_kw={"wspace": 0.42})
 
-    # (a) external ROC, per vendor (model never saw GE / Philips / Canon)
+    # (a) ROC per manufacturer
     ax = axes[0]
-    ax.plot([0, 1], [0, 1], color=MUTED, lw=0.8, ls="--", zorder=1)
+    ax.plot([0, 1], [0, 1], color=MUTED, lw=0.9, ls="--", zorder=1)
     for v in VENDORS:
         g = s[s.vendor == v]
         if g["fail"].nunique() < 2:
             continue
         fpr, tpr, _ = roc_curve(g["fail"], g["qc_LogReg"])
         a = perf[(perf.model == "LogReg") & (perf.subgroup == v)].auroc.iloc[0]
-        ax.plot(fpr, tpr, color=COL[v], lw=1.6, marker=MRK[v], markevery=0.22,
-                markersize=3.5, markeredgecolor="white", markeredgewidth=0.4,
-                label=f"{v}  {a:.3f}", zorder=2)
+        star = "" if v == "Siemens" else "*"
+        ax.plot(fpr, tpr, color=COL[v], lw=1.8, marker=MRK[v], markevery=0.22,
+                markersize=4, markeredgecolor="white", markeredgewidth=0.4,
+                label=f"{v}{star}   {a:.3f}", zorder=2)
     ax.set_xlabel("False positive rate"); ax.set_ylabel("True positive rate")
-    ax.set_title("(a) Failure detection, M&Ms\n(AUROC per vendor)", fontsize=8, pad=5)
-    ax.legend(fontsize=6, loc="lower right", handlelength=1.4, labelspacing=0.25)
+    ax.set_title("(a) Failure detection by manufacturer", fontsize=9, pad=7)
+    lg = ax.legend(fontsize=7, loc="lower right", handlelength=1.6, labelspacing=0.35,
+                   title="AUROC        * not seen in development", title_fontsize=6.6)
+    lg._legend_box.align = "left"
     ax.set_xlim(0, 1); ax.set_ylim(0, 1.02)
 
-    # (b) the control: is it finding the vendor, or the error?
+    # (b) the control -- two detectors, two targets
     ax = axes[1]
-    dets = ["Image-OOD (Mahalanobis)", "CycleQA (disagreement, no training)", "CycleQA (LogReg)"]
-    short = ["Image-OOD", "CycleQA\n(rule)", "CycleQA\n(model)"]
+    dets = ["Image-OOD (Mahalanobis)", "CycleQA (LogReg)"]
+    short = ["Appearance-based OOD\n(reads the image)", "CycleQA\n(reads the mask)"]
     tg = ["is this Canon?", "is this segmentation wrong?"]
-    x = np.arange(3); w = 0.34
-    for k, (t, fc, hh) in enumerate(zip(tg, ["white", "#0173B2"], ["///", ""])):
+    x = np.array([0.0, 1.5])                     # widely separated groups
+    w = 0.42
+    for k, (t, fc, hh, lab) in enumerate(zip(
+            tg, ["white", "#0173B2"], ["///", ""],
+            ["Identifies an unseen manufacturer", "Identifies a failed segmentation"])):
         vals = [ood[(ood.detector == d) & (ood.target == t)].auroc.iloc[0] for d in dets]
-        b = ax.bar(x + (k - 0.5) * w, vals, w * 0.9, facecolor=fc, hatch=hh,
-                   edgecolor=INK if fc == "white" else "white", linewidth=0.7,
-                   label="vendor" if k == 0 else "error", zorder=2)
-        for xi, vi in zip(x + (k - 0.5) * w, vals):
-            ax.text(xi, vi + 0.02, f"{vi:.2f}", ha="center", fontsize=6, color=INK)
-    ax.axhline(0.5, color=MUTED, lw=0.9, ls=":", zorder=1)
-    ax.text(2.62, 0.5, "chance", fontsize=6, color=MUTED, ha="left", va="center")
-    ax.set_xticks(x); ax.set_xticklabels(short, fontsize=6.6)
-    ax.set_xlim(-0.62, 3.15)
-    ax.set_ylabel("AUROC"); ax.set_ylim(0, 1.12)
-    ax.set_title("(b) Control: what is detected?", fontsize=8, pad=5)
-    ax.legend(fontsize=6, loc="upper center", ncol=2, handlelength=1.2,
-              labelspacing=0.2, columnspacing=1.0)
+        ax.bar(x + (k - 0.5) * w * 1.06, vals, w, facecolor=fc, hatch=hh,
+               edgecolor=INK if fc == "white" else "white", linewidth=0.9,
+               label=lab, zorder=2)
+        for xi, vi in zip(x + (k - 0.5) * w * 1.06, vals):
+            ax.text(xi, vi + 0.022, f"{vi:.2f}", ha="center", fontsize=7.4, color=INK)
+    ax.set_xticks(x); ax.set_xticklabels(short, fontsize=7.4)
+    ax.set_xlim(-0.62, 2.12)
+    ax.set_ylabel("AUROC"); ax.set_ylim(0, 1.2)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_title("(b) Error detection vs. manufacturer detection", fontsize=9, pad=7)
+    ax.legend(fontsize=6.8, loc="upper center", ncol=1, handlelength=1.3,
+              labelspacing=0.3, borderpad=0.2)
 
-    # (c) calibration on the external set
+    # (c) calibration
     ax = axes[2]
-    ax.plot([0, 1], [0, 1], color=MUTED, lw=0.8, ls="--", zorder=1)
+    ax.plot([0, 1], [0, 1], color=MUTED, lw=0.9, ls="--", zorder=1,
+            label="perfect calibration")
     pt, pp = calibration_curve(s["fail"], s["qc_LogReg"], n_bins=8, strategy="quantile")
-    ax.plot(pp, pt, color="#0173B2", lw=1.6, marker="o", markersize=4.5,
-            markeredgecolor="white", markeredgewidth=0.5, zorder=2)
+    ax.plot(pp, pt, color="#0173B2", lw=1.8, marker="o", markersize=5,
+            markeredgecolor="white", markeredgewidth=0.5, label="CycleQA", zorder=2)
     br = perf[(perf.model == "LogReg") & (perf.scope == "MnM (external)")
               & (perf.subgroup == "ALL")].brier.iloc[0]
-    ax.text(0.96, 0.06, f"Brier = {br:.3f}", transform=ax.transAxes, ha="right",
-            fontsize=7, color=INK)
-    ax.set_xlabel("Predicted failure risk"); ax.set_ylabel("Observed failure rate")
-    ax.set_title("(c) Calibration, M&Ms", fontsize=8, pad=5)
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    ax.text(0.97, 0.05, f"Brier = {br:.3f}", transform=ax.transAxes, ha="right",
+            va="bottom", fontsize=8.5, color=INK)
+    ax.set_xlabel("Predicted failure risk")
+    ax.set_ylabel("Observed failure rate")
+    ax.set_title("(c) Risk calibration", fontsize=9, pad=7)
+    ax.legend(fontsize=7, loc="upper left", handlelength=1.6, labelspacing=0.3)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1.02)
 
-    fig.suptitle("The detector transfers to vendors absent from development",
-                 fontsize=9, y=1.02)
+    fig.suptitle("Failure detection transfers to manufacturers absent from development",
+                 fontsize=10, y=1.02)
     save(fig, "fig4_detection.png")
 
 
-# ---------------------------------------------------------------- Fig 5
+# ---------------------------------------------------------------- Figure 5
 def fig5_action():
-    """Acting on the risk score: selective referral and QC-guided reselection."""
     rc = pd.read_csv(os.path.join(RES, "risk_coverage.csv"))
     rs = pd.read_csv(os.path.join(RES, "reselection.csv"))
     rc = rc[rc.model == "LogReg"].sort_values("coverage")
 
-    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.7), gridspec_kw={"wspace": 0.48})
+    fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.3), gridspec_kw={"wspace": 0.40})
 
-    # (a) risk-coverage on EF error
+    # (a) selective referral
     ax = axes[0]
-    ax.plot(100 * rc.coverage, rc.residual_ef_mae, color="#0173B2", lw=1.8,
-            marker="o", markersize=4.5, markeredgecolor="white", markeredgewidth=0.5, zorder=2)
-    ax.set_xlabel("Coverage: studies auto-reported (%)")
-    ax.set_ylabel("Residual EF error (pp)")
-    ax.invert_xaxis()
-    ax.set_ylim(15, 24.6)
-    ax.set_title("(a) Selective referral", fontsize=8, pad=5)
+    ax.plot(100 * rc.coverage, rc.residual_ef_mae, color="#0173B2", lw=2.0,
+            marker="o", markersize=5.5, markeredgecolor="white", markeredgewidth=0.6, zorder=2)
+    ax.set_xlabel("Studies reported automatically (%)")
+    ax.set_ylabel("Residual EF error among them (pp)")
+    ax.invert_xaxis(); ax.set_ylim(15, 25)
+    ax.set_title("(a) Selective referral", fontsize=9, pad=7)
     y80 = rc[rc.coverage == 0.8].residual_ef_mae.iloc[0]
-    ax.annotate(f"review top 20%\n→ {y80:.1f} pp", xy=(80, y80), xytext=(72, 22.4),
-                fontsize=6.2, color=INK, ha="center",
-                arrowprops=dict(arrowstyle="-", lw=0.7, color=MUTED))
+    ax.annotate("riskiest 20% sent\nfor human review", xy=(80, y80), xytext=(66, 23.4),
+                fontsize=7, color=INK, ha="center",
+                arrowprops=dict(arrowstyle="->", lw=0.9, color=MUTED))
 
-    # (b) reselection: EF error
+    # (b) reselection
     ax = axes[1]
     order = ["always-bidir (current system)", "always-ES (best fixed, hindsight)",
              "CycleQA-guided reselection", "oracle: min EF error"]
-    lbl = ["Current system", "Best fixed (hindsight)", "CycleQA reselection", "Oracle"]
+    lbl = ["Current\nsystem", "Best fixed\n(needs labels)", "CycleQA\nreselection",
+           "Oracle\n(upper bound)"]
     g = rs[rs.scope == "ALL"].set_index("strategy")
     vals = [g.loc[o, "ef_mae"] for o in order]
-    fcs = ["white", "#BFBFBF", "#0173B2", "white"]
-    hts = ["", "", "", "///"]
-    bars = ax.bar(range(4), vals, 0.66, color=fcs, hatch=hts, edgecolor=INK,
-                  linewidth=0.7, zorder=2)
+    bars = ax.bar(range(4), vals, 0.64, color=["white", "#BFBFBF", "#0173B2", "white"],
+                  hatch=["", "", "", "///"], edgecolor=INK, linewidth=0.9, zorder=2)
     for i, v in enumerate(vals):
-        ax.text(i, v + 0.6, f"{v:.1f}", ha="center", fontsize=6.5, color=INK)
-    ax.set_xticks(range(4))
-    ax.set_xticklabels(lbl, fontsize=6.4, rotation=32, ha="right")
-    ax.set_ylabel("EF error (pp)"); ax.set_ylim(0, 27)
-    ax.set_title("(b) QC-guided reselection", fontsize=8, pad=5)
+        ax.text(i, v + 0.7, f"{v:.1f}", ha="center", fontsize=7.6, color=INK)
+    ax.set_xticks(range(4)); ax.set_xticklabels(lbl, fontsize=7.2)
+    ax.set_ylabel("EF error (pp)"); ax.set_ylim(0, 28)
+    ax.set_title("(b) QC-guided reselection", fontsize=9, pad=7)
 
-    # (c) per-vendor reselection gain in EF error
+    # (c) per manufacturer
     ax = axes[2]
-    x = np.arange(len(VENDORS)); w = 0.36
+    x = np.arange(4); w = 0.38
     cur = [rs[(rs.scope == v) & (rs.strategy == order[0])].ef_mae.iloc[0] for v in VENDORS]
     new = [rs[(rs.scope == v) & (rs.strategy == order[2])].ef_mae.iloc[0] for v in VENDORS]
-    ax.bar(x - w / 2, cur, w * 0.92, facecolor="white", edgecolor=INK, linewidth=0.7,
+    ax.bar(x - w / 2, cur, w * 0.92, facecolor="white", edgecolor=INK, linewidth=0.9,
            hatch="///", label="current system", zorder=2)
-    b2 = ax.bar(x + w / 2, new, w * 0.92, facecolor="#0173B2", edgecolor="white",
-                linewidth=0.5, label="+ CycleQA reselection", zorder=2)
+    ax.bar(x + w / 2, new, w * 0.92, facecolor="#0173B2", edgecolor="white",
+           linewidth=0.5, label="with CycleQA reselection", zorder=2)
     for xi, vi in zip(x + w / 2, new):
-        ax.text(xi, vi + 0.8, f"{vi:.1f}", ha="center", fontsize=6, color=INK)
-    ax.set_xticks(x); ax.set_xticklabels(VENDORS, fontsize=6.5, rotation=20, ha="right")
-    ax.set_ylabel("EF error (pp)"); ax.set_ylim(0, 40)
-    ax.set_title("(c) Gain by vendor", fontsize=8, pad=5)
-    ax.legend(fontsize=6, loc="upper right", handlelength=1.2, labelspacing=0.25)
+        ax.text(xi, vi + 1.0, f"{vi:.1f}", ha="center", fontsize=7, color=INK)
+    ax.set_xticks(x); ax.set_xticklabels(VENDORS, fontsize=7.6)
+    ax.set_ylabel("EF error (pp)"); ax.set_ylim(0, 43)
+    ax.set_title("(c) Reselection gain by manufacturer", fontsize=9, pad=7)
+    ax.legend(fontsize=7, loc="upper left", handlelength=1.4, labelspacing=0.3)
 
-    fig.suptitle("Acting on the risk score: no labels, no retraining, no extra inference",
-                 fontsize=8.5, y=1.04)
+    fig.suptitle("Acting on the risk score requires no labels, no retraining "
+                 "and no additional inference", fontsize=10, y=1.02)
     save(fig, "fig5_action.png")
 
 
 if __name__ == "__main__":
-    fig2_dice_estimation()
-    fig3_cross_vendor()
+    fig1_vendor()
+    fig2_qualitative()
+    fig3_estimation()
     fig4_detection()
     fig5_action()
     print("\n[make_figures] done")
