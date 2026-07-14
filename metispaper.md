@@ -438,16 +438,19 @@ Two patients, five columns. Both rows show a **mid-cycle frame**, deliberately: 
 > for frame *t* and structure *c*, `A_c(t) = Dice( ed_pred[t] , es_pred[t] )` — the overlap between
 > the two independent propagations. The map in column 5 is simply `ed_pred[t] != es_pred[t]`.
 
-**Top row (Siemens, PASS):** all three structures are segmented well (RV 0.922, Myo 0.834, LV
-0.921). Reference and prediction are nearly identical, and so are the two propagations. The
-disagreement map is a thin rim — boundary noise. **CycleQA risk 0.06. True Dice 0.892. EF error
-0.2 pp.** (A risk of exactly 0.00 would look artificial; 0.06 is a real, low, non-degenerate score.)
+Both rows show a **mid-ventricular** level. Basal and apical slices are deliberately excluded: the
+right ventricle is truncated at the base and the cavity vanishes at the apex, so neither shows the
+whole heart. The crop is tight to the bounding box of the reference and both propagations.
 
-**Bottom row (Canon, REVIEW):** the forward pass draws a large left ventricle; the backward pass
-draws a small one, shifts the myocardium, and **splits the right ventricle into two components —
-anatomically impossible.** The disagreement map is a large solid region: **the model is visibly
-contradicting itself.** `A(t)` collapses to 0.3–0.4. **CycleQA risk 0.95. True Dice 0.553. EF error
-42.0 pp.**
+**Top row (Siemens, PASS):** all three structures are segmented well (RV 0.918, Myo 0.813, LV
+0.886). Reference and prediction are nearly identical, and so are the two propagations. The
+disagreement map is a thin rim — boundary noise. **CycleQA risk 0.12. True Dice 0.872. EF error
+0.2 pp.** (A risk of exactly 0.00 would look artificial; 0.12 is a real, low, non-degenerate score.)
+
+**Bottom row (Canon, REVIEW):** the two propagations place the myocardium and cavity differently, and
+the disagreement map becomes a **large solid region covering the entire left ventricle** — the model
+is visibly contradicting itself. Myocardial agreement collapses to ≈0.35. **CycleQA risk 0.99. True
+Dice 0.620. EF error 41.7 pp.**
 
 > **Neither judgement used a reference mask. The red region *is* the signal.** This is the figure
 > that makes the method intuitive before any number is quoted.

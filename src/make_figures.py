@@ -49,7 +49,7 @@ plt.rcParams.update({
     "font.family": "DejaVu Sans", "font.size": 8,
     "axes.edgecolor": MUTED, "axes.linewidth": 0.8, "axes.labelcolor": INK,
     "xtick.color": MUTED, "ytick.color": MUTED, "text.color": INK,
-    "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.5,
+    "axes.grid": False,
     "axes.axisbelow": True, "legend.frameon": False,
     "figure.dpi": 300, "savefig.dpi": 300, "savefig.bbox": "tight",
 })
@@ -72,23 +72,32 @@ def fig1_vendor():
     dev, ext = cohorts()
     groups = [dev, ext[ext.vendor == "Siemens"]] + [ext[ext.vendor == v]
                                                     for v in ["Philips", "GE", "Canon"]]
-    labels = ["ACDC", "Siemens", "Philips", "GE", "Canon"]
-    cols = [DEV, COL["Siemens"], COL["Philips"], COL["GE"], COL["Canon"]]
+    # ACDC is itself a Siemens cohort, so it carries the Siemens colour. The two group
+    # brackets below the axis say which dataset each bar comes from.
+    labels = ["Siemens", "Siemens", "Philips", "GE", "Canon"]
+    cols = [COL["Siemens"], COL["Siemens"], COL["Philips"], COL["GE"], COL["Canon"]]
     hats = ["", "", HATCH["Philips"], HATCH["GE"], HATCH["Canon"]]
     x = np.arange(5)
 
-    fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.0), gridspec_kw={"wspace": 0.42})
+    fig, axes = plt.subplots(1, 3, figsize=(10.6, 3.5), gridspec_kw={"wspace": 0.40})
 
     def panel(ax, vals, fmt, ymax, pad, ylabel, title):
         ax.axvspan(1.5, 4.5, color=SHADE, zorder=0)
         b = ax.bar(x, vals, 0.66, color=cols, hatch=hats, edgecolor="white",
                    linewidth=0.6, zorder=2)
-        b[0].set_edgecolor(INK); b[0].set_linewidth(1.0)
+        b[0].set_edgecolor(INK); b[0].set_linewidth(1.2)      # development cohort
         for xi, vi in zip(x, vals):
-            ax.text(xi, vi + pad, fmt.format(vi), ha="center", fontsize=7.2, color=INK)
-        ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=7.2)
-        ax.set_ylim(0, ymax); ax.set_ylabel(ylabel, fontsize=8)
-        ax.set_title(title, fontsize=9, pad=7)
+            ax.text(xi, vi + pad, fmt.format(vi), ha="center", fontsize=7.4, color=INK)
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, fontsize=7.4, rotation=28, ha="right")
+        ax.set_ylim(0, ymax); ax.set_ylabel(ylabel, fontsize=8.5)
+        ax.set_title(title, fontsize=9.5, pad=8)
+        # dataset brackets under the axis
+        for x0, x1, lab in [(-0.42, 0.42, "ACDC"), (0.58, 4.42, "M&Ms")]:
+            ax.plot([x0, x1], [-0.235 * ymax] * 2, color=MUTED, lw=0.9,
+                    clip_on=False, zorder=3)
+            ax.text((x0 + x1) / 2, -0.29 * ymax, lab, ha="center", va="top",
+                    fontsize=8, color=INK, clip_on=False)
 
     panel(axes[0], [g[["dice_RV", "dice_Myo", "dice_LV"]].mean().mean() for g in groups],
           "{:.3f}", 1.05, 0.03, "Mean Dice", "(a) Segmentation accuracy")
@@ -108,24 +117,27 @@ def fig2_qualitative():
     disagreement where none does."""
     scores = pd.read_csv(os.path.join(RES, "qc_scores.csv")).set_index("patient_id")
     curves = np.load(os.path.join(RES, "disagreement_curves.npz"))
-    # PASS: all three structures segmented well (RV .922 / Myo .834 / LV .921), EF error 0.2 pp.
-    # REVIEW: the two propagations diverge (Dice .553, EF error 42 pp).
-    cases = [("M2P1R1", "Siemens", "PASS", "#1A7F37"),
-             ("B3E2W8", "Canon", "REVIEW", "#C42B1C")]
+    # PASS:   RV .918 / Myo .813 / LV .886, EF error 0.2 pp, risk 0.12.
+    # REVIEW: the two propagations diverge -- Dice .620, EF error 41.7 pp, risk 0.99.
+    cases = [("B5F8L9", "Siemens", "PASS", "#1A7F37"),
+             ("I8N8Y1", "Canon", "REVIEW", "#C42B1C")]
     sl_mnm = patient_slices("MnM")
 
     def best_slice(files):
-        """The slice where the whole heart is most completely represented: all three
-        structures present in the reference, and the largest total area."""
-        best, score = files[len(files) // 2], -1.0
-        for f in files:
+        """A mid-ventricular slice: basal and apical levels are excluded (the RV is truncated
+        at the base and the cavity vanishes at the apex), so only the middle third of the stack
+        is considered, and within it the level where all three structures are largest."""
+        files = sorted(files)
+        n = len(files)
+        mid = files[n // 3: max(n // 3 + 1, 2 * n // 3)]
+        best, score = mid[len(mid) // 2], -1.0
+        for f in mid:
             gt = np.load(f, allow_pickle=True)["ed_mask"]
             areas = [(gt == c).sum() for c in CLS]
-            if min(areas) < 30:                     # a structure is missing at this level
+            if min(areas) < 200:                    # a structure is barely present at this level
                 continue
-            s = float(min(areas)) * float(sum(areas)) ** 0.5
-            if s > score:
-                best, score = f, s
+            if min(areas) > score:
+                best, score = f, min(areas)
         return best
 
     fig, axes = plt.subplots(2, 6, figsize=(11.4, 4.1),
@@ -147,11 +159,17 @@ def fig2_qualitative():
         tm = int((lo + hi) / 2) if hi > lo + 1 else min(T - 1, lo + 1)     # mid-cycle
         gt = d["ed_mask"]
 
-        nz = (ed[tm] > 0) | (es[tm] > 0) | (gt > 0)
+        # crop tightly to the whole heart: the bounding box of the reference and both
+        # propagations, made square, with a small margin
+        nz = (ed[tm] > 0) | (es[tm] > 0) | (bi[ei] > 0) | (gt > 0)
         ys, xs = np.where(nz)
-        cy, cx = (int(ys.mean()), int(xs.mean())) if ys.size else (256, 256)
-        h = 88
-        sl = (slice(max(0, cy - h), cy + h), slice(max(0, cx - h), cx + h))
+        if ys.size:
+            cy, cx = int((ys.min() + ys.max()) / 2), int((xs.min() + xs.max()) / 2)
+            h = int(max(np.ptp(ys), np.ptp(xs)) / 2) + 14
+        else:
+            cy = cx = 256; h = 88
+        y0, x0 = max(0, cy - h), max(0, cx - h)
+        sl = (slice(y0, min(512, y0 + 2 * h)), slice(x0, min(512, x0 + 2 * h)))
 
         def show(ax, frame, mask, title):
             ax.imshow(frame[sl], cmap="gray", interpolation="nearest")
@@ -253,7 +271,7 @@ def fig3_estimation():
         ax.set_xlabel("True Dice")
         ax.set_title(title, fontsize=9, pad=7)
         ax.set_xlim(0.3, 1.0); ax.set_ylim(0.3, 1.0); ax.set_aspect("equal")
-    axes[0].set_ylabel("CycleQA estimate")
+        ax.set_ylabel("CycleQA estimate")
     fig.suptitle("Segmentation quality is estimable from the predictions alone",
                  fontsize=10, y=1.01)
     save(fig, "fig3_estimation.png")
@@ -274,9 +292,10 @@ def fig4_detection():
         if g["fail"].nunique() < 2:
             continue
         fpr, tpr, _ = roc_curve(g["fail"], g["qc_LogReg"])
+        a = perf[(perf.model == "LogReg") & (perf.subgroup == v)].auroc.iloc[0]
         ax.plot(fpr, tpr, color=COL[v], lw=1.8, marker=MRK[v], markevery=0.22,
                 markersize=4.2, markeredgecolor="white", markeredgewidth=0.4,
-                label=v, zorder=2)
+                label=f"{v}   {a:.3f}", zorder=2)
     ax.set_xlabel("False positive rate"); ax.set_ylabel("True positive rate")
     ax.set_title("(a) Failure detection", fontsize=9, pad=7)
     ax.legend(fontsize=7.5, loc="lower right", handlelength=1.6, labelspacing=0.32)
@@ -310,6 +329,10 @@ def fig4_detection():
     pt, pp = calibration_curve(s["fail"], s["qc_LogReg"], n_bins=8, strategy="quantile")
     ax.plot(pp, pt, color="#0173B2", lw=1.8, marker="o", markersize=5,
             markeredgecolor="white", markeredgewidth=0.5, zorder=2)
+    br = perf[(perf.model == "LogReg") & (perf.scope == "MnM (external)")
+              & (perf.subgroup == "ALL")].brier.iloc[0]
+    ax.text(0.97, 0.05, f"Brier = {br:.3f}", transform=ax.transAxes, ha="right",
+            va="bottom", fontsize=9, color=INK)
     ax.set_xlabel("Predicted risk"); ax.set_ylabel("Observed failure rate")
     ax.set_title("(c) Risk calibration", fontsize=9, pad=7)
     ax.set_xlim(0, 1); ax.set_ylim(0, 1.02)
@@ -333,8 +356,12 @@ def fig5_action():
             marker="o", markersize=5.5, markeredgecolor="white", markeredgewidth=0.6, zorder=2)
     ax.set_xlabel("Reported automatically (%)")
     ax.set_ylabel("Residual EF error (pp)")
-    ax.invert_xaxis(); ax.set_ylim(15, 25)
+    ax.invert_xaxis(); ax.set_ylim(15, 25.4)
     ax.set_title("(a) Selective referral", fontsize=9, pad=7)
+    y80 = rc[rc.coverage == 0.8].residual_ef_mae.iloc[0]
+    ax.annotate(f"review the riskiest 20%\n$\\rightarrow$ {y80:.1f} pp",
+                xy=(80, y80), xytext=(66, 23.6), fontsize=7.2, color=INK, ha="center",
+                arrowprops=dict(arrowstyle="->", lw=1.0, color=INK))
 
     # (b) reselection -- rotated labels, well separated
     ax = axes[1]
