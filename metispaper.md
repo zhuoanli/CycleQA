@@ -401,17 +401,18 @@ among predictions already computed, it halves ejection-fraction error.
 
 ## 9. Figures — placement and purpose
 
-There are **five**. Figure 2 is the qualitative one: a paper about segmentation quality that never
+There are **six**. Figure 1 is the graphical overview (the uploaded `method.png`); Figure 3 is the qualitative one: a paper about segmentation quality that never
 shows a segmentation is not persuasive, and this figure lets the reader *see* the method work
 before a single statistic is quoted.
 
 | Figure | File | Goes in | **The one sentence it must make the reader believe** |
 |---|---|---|---|
-| **1** | `fig1_vendor.png` | §6.1 | *It is the manufacturer, not the dataset — and benchmark Dice conceals the clinical damage.* |
-| **2** | `fig2_qualitative.png` | §6.2 (open with it) | *You can literally see the two propagations contradicting each other exactly where the segmentation fails — and no reference mask was used to see it.* |
-| **3** | `fig3_estimation.png` | §6.2 | *Segmentation quality is estimable from the predictions alone, with no training at all.* |
-| **4** | `fig4_detection.png` | §6.3 | *The detector transfers to scanners it has never seen, and it is detecting the error, not the scanner.* |
-| **5** | `fig5_action.png` | §6.5 | *The risk score is actionable: it halves the clinical error, for free.* |
+| **1** | `method.png` | §5 (Methods opening) | *The whole method in one picture: two propagations → disagreement → risk → act, all without labels.* |
+| **2** | `fig1_vendor.png` | §6.1 | *It is the manufacturer, not the dataset — and benchmark Dice conceals the clinical damage.* |
+| **3** | `fig2_qualitative.png` | §6.2 (open with it) | *You can literally see the two propagations contradicting each other exactly where the segmentation fails — and no reference mask was used to see it.* |
+| **4** | `fig3_estimation.png` | §6.2 | *Segmentation quality is estimable from the predictions alone, with no training at all.* |
+| **5** | `fig4_detection.png` | §6.3 | *The detector transfers to scanners it has never seen, and it is detecting the error, not the scanner.* |
+| **6** | `fig5_action.png` | §6.5 | *The risk score is actionable: it halves the clinical error, for free.* |
 
 ### Figure 2 in detail — what the reader is looking at
 

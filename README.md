@@ -6,7 +6,10 @@ via Dual-Anchored Medical Video Foundation Model**
 Zhuoan Li — MIUA 2026 (MÉTIS Special Session)
 
 Code for every result in the paper: preprocessing → segmentation inference → quality assurance →
-figures and tables. **No number in the manuscript was typed by hand** — `src/verify_numbers.py`
+figures and tables. The method in one picture:
+
+![CycleQA method overview](figures/method.png)
+ **No number in the manuscript was typed by hand** — `src/verify_numbers.py`
 re-derives all 54 of them from the CSVs and exits non-zero on any mismatch.
 
 ---
