@@ -114,8 +114,17 @@ def fig2_qualitative():
     curves = np.load(os.path.join(RES, "disagreement_curves.npz"))
     # PASS:   RV .918 / Myo .813 / LV .886, EF error 0.2 pp, risk 0.12.
     # REVIEW: the two propagations diverge -- Dice .620, EF error 41.7 pp, risk 0.99.
-    cases = [("B5F8L9", "Siemens", "PASS", "#1A7F37"),
-             ("I8N8Y1", "Canon", "REVIEW", "#C42B1C")]
+    # (patient, manufacturer, verdict, colour, display transform applied on top of the
+    #  centroid-based short-axis orientation, set by inspection to match the clinical view)
+    cases = [("B5F8L9", "Siemens", "PASS", "#1A7F37", "rot90cw_flipud"),
+             ("I8N8Y1", "Canon", "REVIEW", "#C42B1C", "flipud")]
+
+    def _extra(a, code):
+        if code == "flipud":
+            return np.flipud(a)
+        if code == "rot90cw_flipud":
+            return np.flipud(np.rot90(a, -1))       # rotate 90 deg clockwise, then flip vertically
+        return a
     sl_mnm = patient_slices("MnM")
 
     def best_slice(files):
@@ -142,7 +151,7 @@ def fig2_qualitative():
         b = axes[r, 5].get_position()
         axes[r, 5].set_position([b.x0 + 0.052, b.y0, b.width - 0.052, b.height])
 
-    for r, (pid, vendor, verdict, vcol) in enumerate(cases):
+    for r, (pid, vendor, verdict, vcol, xform) in enumerate(cases):
         f = best_slice(sl_mnm[pid])
         d = np.load(f, allow_pickle=True)
         p = np.load(os.path.join(ROOT, "results/medsam2_mnm", os.path.basename(f)),
@@ -181,6 +190,14 @@ def fig2_qualitative():
         gt = _rot(rot, gt, 0)
         _framecache = {ei: _rot(rot, d["frames"][ei, 0], 1),
                        tm: _rot(rot, d["frames"][tm, 0], 1)}
+
+        # apply the per-case display transform
+        ed = np.stack([np.ascontiguousarray(_extra(ed[k], xform)) for k in range(T)])
+        es = np.stack([np.ascontiguousarray(_extra(es[k], xform)) for k in range(T)])
+        bi = np.stack([np.ascontiguousarray(_extra(bi[k], xform)) for k in range(T)])
+        gt = np.ascontiguousarray(_extra(gt, xform))
+        _framecache = {k: np.ascontiguousarray(_extra(v, xform))
+                       for k, v in _framecache.items()}
 
         # crop tightly to the whole heart: the bounding box of the reference and both
         # propagations, made square, with a small margin
