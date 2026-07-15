@@ -229,8 +229,8 @@ def fig2_qualitative():
 
         show(axes[r, 0], img_ed, gt, "Reference")
         show(axes[r, 1], img_ed, bi[ei], "Prediction")
-        show(axes[r, 2], img_md, ed[tm], "Forward pass")
-        show(axes[r, 3], img_md, es[tm], "Backward pass")
+        show(axes[r, 2], img_md, ed[tm], "ED-anchored")
+        show(axes[r, 3], img_md, es[tm], "ES-anchored")
 
         ax = axes[r, 4]
         ax.imshow(img_md[sl], cmap="gray", interpolation="nearest")

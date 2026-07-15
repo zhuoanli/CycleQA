@@ -5,15 +5,15 @@ Nothing is trained here. Every prediction already existed on disk; this work rea
 ## The system under audit (fixed)
 
 **Dual-anchored MedSAM2.** MedSAM2 (hiera-tiny) is
-prompted with a bounding box at ED and propagated forward, prompted again at ES and propagated
+prompted with a bounding box at ED and propagated in both temporal directions, prompted again at ES and likewise propagated
 backward, and the two passes are merged at the temporal midpoint.
 
 Each result NPZ therefore holds **three full-length predictions**:
 
 | key | what it is |
 |---|---|
-| `ed_pred` | forward propagation from the ED anchor, all T frames |
-| `es_pred` | backward propagation from the ES anchor, all T frames |
+| `ed_pred` | ED-anchored propagation (both directions), all T frames |
+| `es_pred` | ES-anchored propagation (both directions), all T frames |
 | `bidir` | the merged output — what the system reports today |
 
 **`ed_pred` and `es_pred` are the entire basis of CycleQA.** They are two statistically

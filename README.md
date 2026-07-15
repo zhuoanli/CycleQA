@@ -47,8 +47,10 @@ which to notice.** The model fails silently.
 
 ## The idea
 
-Dual anchoring propagates the same video **twice**: forward from the end-diastolic anchor
-(`ed_pred`), backward from the end-systolic anchor (`es_pred`). Both span every frame. **Both are
+Dual anchoring propagates the same video **twice**: once anchored at the end-diastolic frame
+(`ed_pred`), once at the end-systolic frame (`es_pred`). Each anchor propagates in *both* temporal
+directions, so **both predictions span every frame of the cycle** -- including the frames before ED
+and after ES. **Both are
 already written to disk.** Nobody had looked at the relationship *between* them.
 
 > **If the model tracks the true anatomy, the two independent trajectories converge.
@@ -175,8 +177,9 @@ python pipeline/infer_medsam2.py \
     --overwrite
 ```
 
-MedSAM2 is prompted with a bounding box at ED and propagated forward; prompted again at ES and
-propagated backward; the two passes are merged at the temporal midpoint. **All three predictions are
+MedSAM2 is prompted with a bounding box at ED and propagated in both temporal directions to cover
+every frame; it is prompted again at ES and likewise propagated both ways; the two full-length
+predictions are then merged, each frame taking whichever anchor is nearer. **All three predictions are
 written**: `ed_pred`, `es_pred`, `bidir` — each `(T, 512, 512)`.
 
 > ⚠️ **`--overwrite` is not optional if any input changed.** Without it the script silently skips

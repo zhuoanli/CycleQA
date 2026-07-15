@@ -6,8 +6,8 @@ centre, or pathology label may enter the matrix. run() asserts this before writi
 
 Four families:
   ANCHOR  -- bidirectional propagation disagreement (THE primary signal). ed_pred
-             propagates forward from the ED anchor; es_pred propagates backward from
-             ES. Both cover all T frames. If the model is tracking the true anatomy the
+             is the ED-anchored propagation; es_pred is the ES-anchored
+             propagation (each anchor propagates both ways to span every frame). Both cover all T frames. If the model is tracking the true anatomy the
              two independent trajectories must converge; if it is drifting they
              separate. Defined only for dual-anchored propagation models -- a frame-wise
              CNN has no second direction and cannot produce this signal at all.

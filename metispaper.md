@@ -100,8 +100,8 @@ And the benchmark is narrow: ACDC is one hospital, one manufacturer. Cite
 2. **At a site with no ground truth, can the failure be *seen*?** → the contribution.
 
 **Paragraph 4 — the mechanism, stated once, plainly.** Dual anchoring produces **two
-statistically independent propagations of the same video**: forward from the ED anchor, backward
-from the ES anchor, both covering every frame, both already written to disk. If the model tracks
+statistically independent propagations of the same video**: one anchored at ED, one at ES, each
+propagated in both temporal directions so both span every frame, both covering every frame, both already written to disk. If the model tracks
 the true anatomy they must converge. If it drifts they separate. *The magnitude of the
 disagreement is the magnitude of the error* — and it needs no reference mask. We call this
 **CycleQA**, after the cardiac cycle that must close.
@@ -157,8 +157,9 @@ this.**
 ## 5. Methods (~2.5 pages)
 
 **5.1 The system under audit.** Describe dual-anchored propagation **in prose — do not cite it as
-prior work**. MedSAM2 (hiera-tiny) is prompted with a bounding box at ED and propagated forward;
-prompted again at ES and propagated backward; the two passes are merged at the temporal midpoint.
+prior work**. MedSAM2 (hiera-tiny) is prompted with a bounding box at ED and propagated in both temporal
+directions; prompted again at ES and likewise propagated both ways; the two full-length predictions
+are merged, each frame taking the nearer anchor.
 This writes **three full-length predictions per slice**: `M^ED`, `M^ES`, and the merged `M^bi`.
 It is treated as **fixed** and is not modified.
 
@@ -428,8 +429,8 @@ Two patients, five columns. Both rows show a **mid-cycle frame**, deliberately: 
 
 | Column | What it shows |
 |---|---|
-| 3 | **forward pass** — MedSAM2 prompted at ED, propagated forward to this frame |
-| 4 | **backward pass** — MedSAM2 prompted at ES, propagated backward to this frame |
+| 3 | **ED-anchored** — the ED-anchored prediction at this frame (it reached here by propagating from ED) |
+| 4 | **ES-anchored** — the ES-anchored prediction at this frame (it reached here by propagating from ES) |
 | 4 | **the disagreement** — computed as `ed_pred[t] != es_pred[t]`: the voxels where the two passes assign *different labels*. **This is the only thing CycleQA is allowed to see.** |
 | 5 | **the disagreement map** |
 | 6 | agreement `A(t)` across the cardiac cycle, and CycleQA's risk |
