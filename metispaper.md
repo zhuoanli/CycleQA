@@ -480,9 +480,13 @@ before being added. Do not add an unverified entry.**
 | Datasets | `bernard2018acdc`, `campello2021mnms`, `martinisla2023mnm2` |
 | Foundation models | `kirillov2023sam`, `ravi2024sam2`, `ma2024medsam`, `zhu2024medsam2`, `stein2023samcardiac`, `chen2025cinecmrsam`, `fu2025cinema` |
 | **QC without ground truth** (the direct prior art — **must be positioned against**) | `valindria2017rca`, `robinson2019qc`, `robinson2017qc`, `tarroni2019qc`, `tarroni2020qc`, `wang2020genqc`, **`hann2021qc`**, `kohlberger2012`, `ruijsink2020` |
+| CMR foundation-model applications | `shahin2026adapting`, `li2026classification` |
+| CMR quality control / uncertainty (group) | `yalcinkaya2024qc`, `yalcinkaya2024uncertainty` |
 | OOD / uncertainty | `gonzalez2022ood`, `jungo2019`, `roy2019`, `hendrycks2017baseline`, `lee2018mahalanobis`, `kendall2017uncertainties`, `lakshminarayanan2017ensembles` |
 | Calibration / selective prediction | `guo2017calibration`, `geifman2017selective` |
 | Domain shift / translation | `tao2019multivendor`, `chen2020generalizability`, `puyolanton2021fairness`, `varoquaux2022failures`, `moor2023gmai` |
+
+**Self-citations are written in the third person** ("Yalcinkaya et al. showed..."), never "our previous work", to preserve double-blind anonymity. The bib contains **only entries actually cited** in main.tex (35 total; no redundant entries).
 
 **One entry was deliberately dropped:** El-Yaniv & Wiener 2010 (JMLR) could not be verified on
 Crossref, DBLP or arXiv. `geifman2017selective` covers selective classification.
