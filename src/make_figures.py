@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import ListedColormap
+from scipy.ndimage import rotate
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import roc_curve
 
@@ -153,6 +154,34 @@ def fig2_qualitative():
         tm = int((lo + hi) / 2) if hi > lo + 1 else min(T - 1, lo + 1)     # mid-cycle
         gt = d["ed_mask"]
 
+        # Put the study into standard radiological short-axis orientation: RV to the left of
+        # the LV, septum roughly vertical. M&Ms is acquired with per-vendor orientations, so the
+        # angle is computed per case from the RV and LV centroids of the reference mask, then
+        # applied to every image and mask. (Display only; no metric uses this.)
+        def _rot(rot, arr, order):
+            return rotate(arr.astype(np.float32 if order else np.uint8), rot,
+                          reshape=False, order=order)
+
+        def _cent(m, c):
+            idx = np.nonzero(m == c)
+            return np.array([idx[0].mean(), idx[1].mean()]) if idx[0].size else None
+
+        # choose the rotation that places the RV centroid to the LEFT of the LV centroid,
+        # septum roughly vertical -- the standard radiological short-axis orientation. The
+        # angle is solved per case (M&Ms is acquired with per-vendor orientations), then a
+        # 180 deg ambiguity is resolved by checking the result. Display only; no metric uses it.
+        rv0, lv0 = _cent(gt, 1), _cent(gt, 3)
+        vy, vx = rv0 - lv0
+        rot = 180.0 - np.degrees(np.arctan2(vy, vx))
+        if _cent(_rot(rot, gt, 0), 1)[1] > _cent(_rot(rot, gt, 0), 3)[1]:
+            rot += 180.0                              # RV landed right of LV -> flip
+        ed = np.stack([_rot(rot, ed[k], 0) for k in range(T)])
+        es = np.stack([_rot(rot, es[k], 0) for k in range(T)])
+        bi = np.stack([_rot(rot, bi[k], 0) for k in range(T)])
+        gt = _rot(rot, gt, 0)
+        _framecache = {ei: _rot(rot, d["frames"][ei, 0], 1),
+                       tm: _rot(rot, d["frames"][tm, 0], 1)}
+
         # crop tightly to the whole heart: the bounding box of the reference and both
         # propagations, made square, with a small margin
         nz = (ed[tm] > 0) | (es[tm] > 0) | (bi[ei] > 0) | (gt > 0)
@@ -178,8 +207,8 @@ def fig2_qualitative():
             if r == 0 and title:
                 ax.set_title(title, fontsize=7.8, pad=4)
 
-        img_ed = d["frames"][ei, 0].astype(np.float32)
-        img_md = d["frames"][tm, 0].astype(np.float32)
+        img_ed = _framecache[ei]
+        img_md = _framecache[tm]
 
         show(axes[r, 0], img_ed, gt, "Reference")
         show(axes[r, 1], img_ed, bi[ei], "Prediction")

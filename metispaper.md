@@ -438,7 +438,7 @@ Two patients, five columns. Both rows show a **mid-cycle frame**, deliberately: 
 > for frame *t* and structure *c*, `A_c(t) = Dice( ed_pred[t] , es_pred[t] )` — the overlap between
 > the two independent propagations. The map in column 5 is simply `ed_pred[t] != es_pred[t]`.
 
-Both rows show a **mid-ventricular** level. Basal and apical slices are deliberately excluded: the
+Both cases are displayed in **standard radiological short-axis orientation** (right ventricle to the left of the left ventricle, septum vertical); this is a per-case rotation for display only and enters no computation. Both rows show a **mid-ventricular** level. Basal and apical slices are deliberately excluded: the
 right ventricle is truncated at the base and the cavity vanishes at the apex, so neither shows the
 whole heart. The crop is tight to the bounding box of the reference and both propagations.
 
