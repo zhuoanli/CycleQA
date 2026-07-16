@@ -1,5 +1,6 @@
 # The manuscript source is not published while the paper is in press.
 paper/
+CycleQA_camera_ready/
 
 __pycache__/
 *.pyc
