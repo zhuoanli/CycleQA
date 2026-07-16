@@ -66,23 +66,21 @@ accumulates with distance from the prompt.
 
 The scheme prompts it **twice**:
 
-| pass | prompted at | propagates | written as |
+| prediction | prompted at | propagates | written as |
 |---|---|---|---|
-| forward | **ED** frame | ED → end of sequence | `ed_pred` |
-| backward | **ES** frame | ES → start of sequence | `es_pred` |
+| ED-anchored | **ED** frame | both directions, spanning every frame | `ed_pred` |
+| ES-anchored | **ES** frame | both directions, spanning every frame | `es_pred` |
 | merged | — | each frame taken from its nearest anchor, split at the temporal midpoint | `bidir` |
 
 Prompts are **bounding boxes** derived from the reference mask at ED/ES, padded 10 px, one per
 structure.
 
-> **This is the single most important caveat in the whole project.** Prompts come from the
-> reference masks, so **every number reported is an oracle-prompt upper bound**. A deployed system
-> additionally needs automatic prompt generation. It makes the finding *stronger*, not weaker:
-> *even with perfect prompts*, the model breaks on an unseen manufacturer.
+> **Prompts come from the reference masks**, so every number reported is an **oracle-prompt upper
+> bound**. A deployed system additionally needs automatic prompt generation.
 
-**All three predictions are written to disk. `ed_pred` and `es_pred` are the entire basis of the
-quality-assurance method** — they are two statistically independent traversals of the same video,
-and nobody had looked at the relationship *between* them.
+All three predictions are written to disk. `ed_pred` and `es_pred` are the basis of the
+quality-assurance method: they are two statistically independent traversals of the same video, and
+their disagreement is the signal.
 
 ```bash
 python pipeline/infer_medsam2.py \
@@ -117,7 +115,7 @@ python pipeline/infer_medsam2.py \
 | `variant_features.py` | The same plausibility features, computed separately for `bidir`, `ed_pred` and `es_pred` — needed to *choose between* them. |
 | `train_qc.py` | Nested cross-validation on the development set → **frozen** → applied once to the external set. Plus the appearance-OOD control, risk–coverage, ablation and threshold sensitivity. |
 | `reselect.py` | Score all three predictions with the frozen model and keep the most plausible. |
-| `make_figures.py`, `make_tables.py` | All four figures and three tables, read from the CSVs. |
+| `make_figures.py`, `make_tables.py` | All five figures and three tables, read from the CSVs. |
 | `verify_numbers.py` | Re-derives **every numeric claim in the manuscript** from the CSVs. Exits non-zero on any mismatch. |
 
 ### How EF is computed, and why you can trust it

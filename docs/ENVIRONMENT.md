@@ -6,10 +6,16 @@ Every experiment in this paper is CPU-only NumPy/SciPy/scikit-learn. There is no
 no inference — all predictions already exist as NPZ. Total runtime ≈ 20 min on 48 cores.
 
 ```bash
-module load conda
 conda activate cinema_ft        # numpy, scipy, pandas, sklearn, matplotlib
-cd /scratch/gautschi/li4533/MIUA_2026
-bash metis/jobs/run_all.sh
+python src/verify_data.py
+python src/compute_metrics.py
+python src/extract_features.py
+python src/variant_features.py
+python src/train_qc.py
+python src/reselect.py
+python src/make_figures.py
+python src/make_tables.py
+python src/verify_numbers.py
 ```
 
 `CYCLEQA_PROCS` overrides the worker count (default 48).

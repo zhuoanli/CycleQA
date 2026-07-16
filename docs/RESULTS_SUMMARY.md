@@ -60,11 +60,15 @@ strategy works everywhere. On Siemens it keeps the merged/ED output (5.8 pp; alw
 give 14.8 pp); on Canon/GE/Philips it switches to ES. **It adapts per patient and per domain
 without ever being told the vendor.**
 
-## The honest surprise
+## Ablation
 
-Anchor features fitted with logistic regression: internal out-of-fold **0.987**, external
-**0.793** — textbook overfitting (24 features, 100 patients, 11 failures). The **untrained**
-rule transfers *better* (0.850).
+| Feature set | Internal (out-of-fold) | External |
+|---|---|---|
+| Anchor agreement, fitted (24 features) | 0.987 | 0.793 |
+| Plausibility only (22) | 0.863 | 0.891 |
+| All families (46) | 0.915 | 0.851 |
+| **Raw disagreement, no fitting** | 0.909 | **0.850** |
 
-**We do not claim learning is what makes CycleQA work. The disagreement signal is strong enough
-that no training is required — and on a development set this small, training on it hurts.**
+The raw disagreement signal transfers without any fitting, while learned combinations are more
+sensitive to feature selection and to the limited number of development failures (11 of 100).
+The training-free tier is therefore the recommended configuration.

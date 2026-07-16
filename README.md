@@ -53,8 +53,7 @@ which to notice.** The model fails silently.
 Dual anchoring propagates the same video **twice**: once anchored at the end-diastolic frame
 (`ed_pred`), once at the end-systolic frame (`es_pred`). Each anchor propagates in *both* temporal
 directions, so **both predictions span every frame of the cycle** -- including the frames before ED
-and after ES. **Both are
-already written to disk.** Nobody had looked at the relationship *between* them.
+and after ES. **Both are already written to disk**, and it is the relationship *between* them that CycleQA uses.
 
 > **If the model tracks the true anatomy, the two independent trajectories converge.
 > If it drifts, they separate. The magnitude of the disagreement is the magnitude of the error.**
@@ -197,9 +196,18 @@ written**: `ed_pred`, `es_pred`, `bidir` — each `(T, 512, 512)`.
 
 **No GPU. No training. No inference.** Reads the NPZs from Stage 2. ≈ 20 min on 48 CPU cores.
 
+Run in this order — each step consumes the previous step's CSVs:
+
 ```bash
-bash jobs/run_all.sh          # runs everything below, in order
-bash jobs/watch.sh            # live progress
+python src/verify_data.py        # data verification gate; exits non-zero on failure
+python src/compute_metrics.py    # per-patient reference metrics
+python src/extract_features.py   # no-reference quality features
+python src/variant_features.py   # the same features, per prediction variant
+python src/train_qc.py           # nested CV -> frozen -> external validation
+python src/reselect.py           # risk-guided reselection
+python src/make_figures.py
+python src/make_tables.py
+python src/verify_numbers.py     # re-derives every manuscript number from the CSVs
 ```
 
 | Script | What it produces | Paper section |
@@ -263,7 +271,6 @@ docs/       PIPELINE.md         end to end, including how EF is computed and why
             RESULTS_SUMMARY.md  every headline number in one place
 
 configs/    cycleqa.yaml        thresholds, CV settings, seeds -- one source of truth
-jobs/       run_all.sh          regenerates every CSV, figure and table from the raw NPZs
 results/    *.csv               all results; every manuscript number traces to one of these
 figures/    fig1..fig5.png
 tables/     table1..table3.tex
@@ -274,24 +281,18 @@ metispaper.md                   section-by-section blueprint: what each figure a
 
 ---
 
-## Honesty notes
+## Scope
 
-These are in the paper. They belong here too.
+Two points to be aware of when reproducing or reusing these results:
 
-- **Prompts are derived from the reference masks.** Every number is an **oracle-prompt upper bound**;
-  a deployed system additionally needs automatic prompt generation. This makes the finding
-  *stronger*: even with perfect prompts, the model breaks on an unseen manufacturer.
-- **Reference masks exist only at ED and ES.** We validate annotated-phase error and claim nothing
-  about intermediate phases. Full-cycle features are *inputs*, never validated targets.
-- **Learning is not what makes this work.** Anchor features fitted with logistic regression score
-  0.987 internally but **0.793** externally — textbook overfitting on 100 patients containing 11
-  failures. The **untrained** rule transfers *better* (**0.850**). Reported rather than hidden: the
-  disagreement signal is strong enough that no training is required, and on a development set this
-  small, training on it is actively harmful.
-- **Retrospective, public data. No prospective clinical validation.**
-- Supervised U-Net and DINOv2 predictions exist for the external cohort, but their checkpoint
-  provenance could not be established, so they are excluded rather than defended
-  ([`docs/MODELS.md`](docs/MODELS.md)).
+- ED/ES box prompts are derived from the reference masks, so the reported segmentation performance
+  is an oracle-prompt upper bound. Automatic prompt generation is out of scope here.
+- Reference masks are available only at ED and ES, so evaluation targets annotated-phase error.
+  Full-cycle predictions supply the CycleQA features, but intermediate phases are not validated
+  targets.
+
+Supervised U-Net and DINOv2 predictions on the external cohort are not included, because their
+training-checkpoint provenance could not be established ([`docs/MODELS.md`](docs/MODELS.md)).
 
 ## Citation
 
