@@ -3,7 +3,6 @@
 **Cross-Vendor Quality Assurance of Zero-Shot Full-Cycle 4D Cardiac Cine MRI Segmentation
 via Dual-Anchored Medical Video Foundation Model**
 
-Zhuoan Li — MIUA 2026 (MÉTIS Special Session)
 
 ![CycleQA method overview](figures/method.png)
 
