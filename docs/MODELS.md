@@ -1,8 +1,6 @@
 # Models
 
-Nothing is trained here. Every prediction already existed on disk; this work reads it.
-
-## The system under audit (fixed)
+## The system under audit
 
 **Dual-anchored MedSAM2.** MedSAM2 (hiera-tiny) is
 prompted with a bounding box at ED and propagated in both temporal directions, prompted again at ES and likewise propagated
@@ -32,16 +30,3 @@ independent traversals of the same video, and their relationship is what CycleQA
 | U-Net (supervised) | — | `results/unet_mnm/` | no | not included — see below |
 | DINOv2 (supervised) | — | `results/dinov2_mnm/` | no | not included |
 
-## Why U-Net and DINOv2 are not included
-
-1. They are frame-wise: with no temporal propagation there is no second anchor direction, and
-   therefore no disagreement signal. Their NPZs contain only `bidir`, a single output. This is a
-   property of frame-wise models rather than of this implementation, and it is why prior
-   reference-free CMR quality-control work targeting such models (Robinson 2019, Tarroni 2019,
-   Wang 2020, Hann 2021) does not use this signal.
-
-2. Their training-checkpoint provenance could not be established. `infer_unet_mnm.py` was deleted
-   in commit `c437e26`, and `results/unet_mnm/` predates both surviving checkpoints
-   (`results/unet/best_model.pth`, ACDC-only; `results/unet_combined/best_model.pth`, trained on
-   ACDC+M&Ms-2 and therefore not a clean external comparison). The pipeline computes metrics for both into
-   `results/patient_metrics.csv`, but they are not reported in the manuscript.
