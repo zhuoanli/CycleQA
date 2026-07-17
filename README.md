@@ -138,7 +138,7 @@ python pipeline/prep_mnm.py     --src <M&Ms_root>  --out preprocessed_mnm
 Per short-axis slice: extract the 2D+*t* sequence, clip to the 2nd–98th intensity percentile,
 normalise to `[0,1]`, resize to 512 × 512, harmonise the label convention, write one NPZ.
 
-> ⚠️ **The raw M&Ms distribution uses the opposite label convention to ACDC** (`1 = LV, 3 = RV`); it
+>  **The raw M&Ms distribution uses the opposite label convention to ACDC** (`1 = LV, 3 = RV`); it
 > is remapped here. `src/verify_data.py` re-establishes the convention geometrically rather than
 > trusting the remap — the LV is the blood pool whose boundary neighbourhood is almost entirely
 > myocardium (measured 1.000 on ACDC, 0.994 on M&Ms for label 3). Getting this wrong is silent: the
@@ -159,9 +159,9 @@ every frame; prompted again at ES and likewise propagated both ways; the two ful
 are then merged, each frame taking the nearer anchor. All three (`ed_pred`, `es_pred`, `bidir`) are
 written to disk.
 
-> ⚠️ **`--overwrite` is not optional if any input changed** — without it the script silently skips
+>  `--overwrite` is not optional if any input changed — without it the script silently skips
 > existing outputs and reuses stale predictions.
-> ⚠️ MedSAM2/SAM2 resolve their config through Hydra **relative to the working directory**: `--cfg`
+>  MedSAM2/SAM2 resolve their config through Hydra **relative to the working directory**: `--cfg`
 > must be a relative path and the process must `chdir` into `MedSAM2/`. The script does this at import.
 
 ### Stage 3 — Quality assurance  (`src/`)
