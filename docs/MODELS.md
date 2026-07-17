@@ -27,6 +27,4 @@ independent traversals of the same video, and their relationship is what CycleQA
 | MedSAM2-dual (primary) | `results/medsam2/` | `results/medsam2_mnm/` | yes | **yes** |
 | MedSAM2-ED / -ES | same NPZs, different key | same | yes | yes (reselection) |
 | SAM2-dual | `results/sam2_bidir/` | `results/sam2_bidir_mnm/` | yes | yes (generalisation check) |
-| U-Net (supervised) | — | `results/unet_mnm/` | no | not included — see below |
-| DINOv2 (supervised) | — | `results/dinov2_mnm/` | no | not included |
 
