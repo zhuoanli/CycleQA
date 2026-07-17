@@ -225,7 +225,6 @@ src/        common.py           shared loaders, geometry, metric primitives
 docs/       PIPELINE.md         end to end, including how EF is computed
             DATASETS.md         cohorts, label convention, and the verification gate
             MODELS.md           the prediction directories, and what is not included
-            SKILLS.md           leakage control, nested CV, calibration, selective prediction
             ENVIRONMENT.md      environment and the traps worth knowing
             RESULTS_SUMMARY.md  every headline number in one place
 
