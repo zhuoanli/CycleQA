@@ -90,7 +90,7 @@ python pipeline/infer_medsam2.py \
     --overwrite                      # <-- see below
 ```
 
-**Two traps:**
+**Two notes:**
 - **`--overwrite` is not optional if any input changed.** Without it the script silently skips
   files that already exist. This once "processed" 2866 files in under a second, reusing stale
   predictions from before a preprocessing fix.
