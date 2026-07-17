@@ -43,5 +43,5 @@ independent traversals of the same video, and their relationship is what CycleQA
 2. Their training-checkpoint provenance could not be established. `infer_unet_mnm.py` was deleted
    in commit `c437e26`, and `results/unet_mnm/` predates both surviving checkpoints
    (`results/unet/best_model.pth`, ACDC-only; `results/unet_combined/best_model.pth`, trained on
-   ACDC+M&Ms-2 and therefore not a clean external comparison). Metrics for both are retained in
-   `results/patient_metrics.csv` but are not reported in the manuscript.
+   ACDC+M&Ms-2 and therefore not a clean external comparison). The pipeline computes metrics for both into
+   `results/patient_metrics.csv`, but they are not reported in the manuscript.

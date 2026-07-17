@@ -1,6 +1,7 @@
 # Headline results
 
-All from `results/*.csv`. Verify with `python src/verify_numbers.py`.
+Running the pipeline (see the README) writes `results/*.csv`; `src/verify_numbers.py` then
+re-derives every number below from them and exits non-zero on any mismatch.
 
 ## 1. Benchmark accuracy does not transfer
 

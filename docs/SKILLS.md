@@ -59,8 +59,8 @@ site can actually act on.
 
 The failure endpoint (any Dice < 0.70) is a modelling choice. Choosing the threshold that
 maximises AUROC would be a form of cherry-picking. The threshold is pre-specified and then
-**swept** (Dice 0.65–0.80; EF error 5–15 pp) with all results reported
-(`results/failure_prevalence.csv`).
+**swept** (Dice 0.65–0.80; EF error 5–15 pp) with all results reported; `train_qc.py` writes them
+to `results/failure_prevalence.csv`.
 
 ## The control experiment
 
