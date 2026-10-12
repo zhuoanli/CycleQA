@@ -1,5 +1,10 @@
 # CycleQA
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Model](https://img.shields.io/badge/model-MedSAM2-7c3aed.svg)](https://arxiv.org/abs/2408.00874)
+[![Dataset](https://img.shields.io/badge/data-ACDC%20%2B%20M%26Ms-orange.svg)](https://www.ub.edu/mnms/)
+![QC](https://img.shields.io/badge/QC-label--free-success.svg)
+
 **Cross-Vendor Quality Assurance of Zero-Shot Full-Cycle 4D Cardiac Cine MRI Segmentation
 via Dual-Anchored Medical Video Foundation Model**
 
